@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+frontend/dist/
+
+# Data & secrets
+.env
+data/
+*.db
+*.db-journal
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude Code local session/config
+.claude/settings.local.json
+
+# Local tooling / skill setup (not part of the project)
+graphify setup/
+
+# graphify outputs — large, generated, regenerable locally with `graphify update .`
+# (kept on disk for the resume workflow; not committed)
+graphify-out/
