@@ -1,0 +1,90 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body {
+    /* Zero horizontal scrolling at <=390px is a Phase 3 hard constraint (§20.7). */
+    @apply overflow-x-hidden;
+    max-width: 100vw;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-bg text-text antialiased;
+    font-family: theme("fontFamily.sans");
+    min-height: 100dvh;
+    /* Respect iOS safe areas (viewport-fit=cover). */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) 0
+      env(safe-area-inset-left);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  #root {
+    min-height: 100dvh;
+    isolation: isolate;
+  }
+
+  /* Visible, accessible focus ring on keyboard navigation only. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent ring-offset-2 ring-offset-bg;
+  }
+
+  /* Tabular numerals everywhere financial figures are displayed. */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* Scrollbar styling (dark, subtle). */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: theme("colors.border") transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: theme("colors.border");
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: theme("colors.surface2");
+  }
+}
+
+@layer utilities {
+  /* Guard against any single element forcing horizontal overflow. */
+  .no-x-overflow {
+    @apply max-w-full overflow-x-hidden;
+  }
+
+  /* Safe-area aware bottom padding for the mobile bottom nav. */
+  .pb-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom) + 1.5rem);
+  }
+}

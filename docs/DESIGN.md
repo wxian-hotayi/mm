@@ -560,3 +560,53 @@ The architecture is approved on the condition that it preserves this pipeline ex
         ACTION STATUS  =  DO_NOTHING | REVIEW | REBALANCE_NOW   ◄── single most important output (§19.3)
 ```
 Notes binding the implementation: cash separation is operational (cash_accounts) vs reporting (net_worth_cash_snapshot), never merged (DL 23); window logic is the one Unified Execution Window Engine (DL 19); enforcement is three-tier with BLOCK reserved for forbidden asset classes (DL 20). Action-Status enum values are `DO_NOTHING | REVIEW_REQUIRED | REBALANCE_NOW` with display labels "Do Nothing" / "Review" / "Rebalance Now" (`REVIEW` ≡ `REVIEW_REQUIRED`).
+
+## 20. Behavioral Interface Layer (Phase 3)
+
+Phase 3 exposes the Phase 1–2 engines to the user as a **behavioral interface**, not a generic dashboard. Its job is to *reduce decisions, reinforce discipline, and prevent emotional investing*. The UI is a pure mirror of the backend decision engine.
+
+### 20.0 Prime directive (binding)
+**The UI MUST NOT generate, infer, or imply any investment decision.** It only renders what the backend engines already computed (Action Status, execution plans, drift, balances). No client-side recommendations, scoring, ranking, "ideas", or projections beyond what an endpoint returns. If a number isn't from the API, it isn't shown.
+
+### 20.1 FORBIDDEN in Phase 3 (hard constraints)
+No AI advisor, no LLM calls, no stock recommendations, no market news/quotes feeds, no trading signals, no technical indicators/overlays, no "discover/explore" surfaces, no watchlists. Charts are minimized and only ever **explanatory of an existing decision** — never an invitation to interpret or trade. Curiosity-driving UI is a defect.
+
+### 20.2 Page set (exactly these in Phase 3)
+1. **Login** (public) — cookie session start.
+2. **Dashboard** (behavior-first — §20.3) — the home screen.
+3. **Execution Center** (§20.4) — the single decision surface.
+4. **Portfolio** (read-only — §20.5).
+5. **Cash Buffer** (§20.6).
+6. **Transactions** (utilitarian record-keeping — record/list what the broker did; NOT a decision surface; needed to populate the ledger).
+7. **Net Worth** (manage manual assets/liabilities + view aggregate; secondary).
+8. **Settings** (profile, password change, strategy/buffer targets, IPS enforcement levels; ties to auth §1).
+Plus `NotFound`. Nav order foregrounds Home + Execution; the rest are secondary.
+
+### 20.3 Behavior-first Dashboard hierarchy (strict vertical priority)
+1. **Action Status** — the hero, above the fold, unmissable. Renders `DO_NOTHING` / `REVIEW_REQUIRED` / `REBALANCE_NOW` with a calm, reassuring treatment for `DO_NOTHING` (the **default success state** — large, green-calm, "Nothing to do — discipline is working"), an amber attention treatment for `REVIEW_REQUIRED`, and a deliberate (not alarming) call-to-act for `REBALANCE_NOW` linking to the Execution Center. Shows the engine's reasons verbatim + `primary_action`. This is the first and largest thing the user sees.
+2. **Net Worth** (secondary) — single total MYR + period change. One number, no chart required to read it.
+3. **Cash Buffer status** — deployable surplus + readiness (READY/ACCUMULATING).
+4. **Execution Plan** (only if one exists) — a compact card linking to the Execution Center.
+5. **Portfolio Drift** — **informational only**, smallest/last; never framed as an action prompt (the engine decides if drift matters, not the user).
+
+### 20.4 Execution Center — the only decision surface
+Renders the backend execution plan + window state; the user never computes anything here. Shows: deployment window status (open/closed, kind, `next_window_date`), the execution plan (exact shares + USD/MYR amounts per order, `plan_kind`), the **required transfer amount** (MYR to move GXBank→Moomoo, derived from `cash_deployed_myr`/`fx_rate_used`), next rebalance date, and IPS compliance status for the plan. Actions are limited to: generate plan (calls the engine), approve, execute (records the resulting transactions), skip — all backend operations. No free-form "what if".
+
+### 20.5 Portfolio — read-only behavior
+Shows holdings, allocation (current vs 70/30 target), and drift. **No** recommendations, suggestions, buy/sell hints, or call-to-action. Drift is shown as fact (within/beyond policy, colored) but the *decision* about it lives only in Action Status / Execution Center.
+
+### 20.6 Cash Buffer page
+Shows per-account balances (GXBank etc.), total cash, **deployable surplus**, **target buffer**, **buffer fill**, and **readiness state**. Allows recording cash movements (operational data entry — inflows/transfers), since the buffer is the operational cash system (§19.1). No deployment *decision* here — that's the Execution Center.
+
+### 20.7 Frontend foundation (refines §10 for behavior-first)
+React 18 + TypeScript (strict) + Vite + Tailwind 3.4 + hand-rolled shadcn-style kit (Decision Log 5; "ShadCN UI" satisfied by the shadcn-style component kit). Mobile-first (design at 375–390px), **dark mode default**, **zero horizontal scrolling at ≤390px**, fast mobile load (route-level code splitting, no heavy chart libs on the dashboard critical path). `types/api.ts` mirrors every Phase 1–2 response shape exactly; all data via TanStack Query; the UI renders backend fields verbatim and never recomputes financial values client-side (Decimals arrive as numbers from the API boundary).
+
+### 20.8 Authentication (implements §9 fully — Phase 1's deferral, DL 14, ends here)
+Cookie-based sessions become primary: on login set HttpOnly `wos_access` (JWT, 30 min) + `wos_refresh` (opaque, SHA256-hashed in new `auth_sessions` table, rotating; 30 d remember / 1 d default), `SameSite=Lax`, `Secure` in production, refresh cookie scoped to `/api/v1/auth`. New tables `auth_sessions` + `password_reset_tokens` (per §6) via Alembic `0003`. `/auth/refresh` rotates, `/auth/logout` revokes, `/auth/password-reset/request|confirm` (token logged server-side; SMTP later). Rate limiting (login & reset 10/min/IP; global 240/min/IP). RBAC retained. **Dual-mode auth (decision):** `get_current_user` accepts the `wos_access` cookie *or* an `Authorization: Bearer` header (cookie preferred) so the browser uses cookies while existing tests/API clients keep working; login returns the token in the body **and** sets cookies. CORS allows credentials from `FRONTEND_ORIGIN`.
+
+### 20.9 Success criteria (Phase 3 gate)
+App opens → **Action Status is the first thing seen**; the user does not need to interpret charts to know what to do; the system states the action (or explicitly that none is needed); the UI reinforces discipline, not curiosity. Verification: `tsc --noEmit` + `vite build` green; auth pytest green (cookie login/refresh-rotation/logout/rate-limit/reset); a behavioral-compliance review confirms no forbidden surfaces, no client-side decisions, Action-Status primacy, and no horizontal scroll at 390px.
+
+### Decision Log additions
+25. **Phase 3 = Behavioral Interface Layer** (owner directive 2026-06-17) — UI mirrors the engine, never generates decisions (§20.0); forbidden surfaces enumerated (§20.1); Dashboard is Action-Status-first (§20.3); Execution Center is the sole decision surface (§20.4).
+26. **Dual-mode auth** (§20.8) — cookie-primary with bearer fallback, so Phase 3 cookie hardening doesn't break Phase 1–2 tests/clients; login returns token in body and sets HttpOnly cookies.

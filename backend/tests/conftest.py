@@ -46,6 +46,10 @@ os.environ["SECRET_KEY"] = "test-secret-key-0123456789abcdef0123456789abcdef"
 os.environ["ADMIN_EMAIL"] = ADMIN_EMAIL
 os.environ["ADMIN_USERNAME"] = ADMIN_USERNAME
 os.environ["ADMIN_PASSWORD"] = ADMIN_PASSWORD
+# Rate limiting is process-local and IP-keyed; the ASGI test transport has no
+# client IP, so every test would share one bucket. Disable it globally and let
+# the dedicated hardening suite re-enable it deterministically.
+os.environ["RATE_LIMIT_ENABLED"] = "false"
 
 API = "/api/v1"
 

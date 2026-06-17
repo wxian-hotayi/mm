@@ -32,8 +32,19 @@ Plus: Alembic migration `0002` (new tables + `ips_rules` enforcement columns), n
 
 **Verification gate:** server boots; live flow — create cash account → record movements → cash summary shows deployable surplus → cycle state correct → action-status returns expected decision → generate execution plan with exact shares → IPS blocks a forbidden-asset BUY (422) → net-worth summary aggregates portfolio as a subset; pytest green (≥90% on new services, state-machine boundary cases, enforcement blocking, execution share math); adversarial review passed.
 
-## Phase 3 — Auth Hardening, Frontend Foundation & Core Pages
-Cookie-based access+rotating-refresh sessions, remember-me, rate limiting, password reset; frontend foundation (Vite + TS strict + Tailwind dark design system, app shell, mobile bottom nav); login + protected routing; **Dashboard built around the Action Status signal + Net Worth + Cash Buffer + Cycle state**; Portfolio (holdings), Transactions, Cash, Execution/Deployment pages over the Phase 1–2 API.
+## Phase 3 — Behavioral Interface Layer ◀ IN PROGRESS
+**Not "just frontend" — the behavioral interface to the execution engine** (DESIGN §20). Goal: reduce decisions, reinforce discipline, prevent emotional investing; the UI is a pure mirror of the backend decision engine and MUST NOT generate investment decisions (§20.0). **Forbidden:** AI advisor, LLM, stock recommendations, market news, trading signals, technical indicators (§20.1).
+
+Deliverables:
+1. **Auth hardening** (implements DESIGN §9 fully; DL 14 deferral ends): cookie-based access + rotating refresh sessions (`auth_sessions`, `password_reset_tokens` via Alembic `0003`), remember-me, rate limiting, password reset, RBAC; dual-mode (cookie-primary, bearer fallback) so Phase 1–2 tests/clients keep working (DL 26).
+2. **Frontend foundation**: React + TS strict + Vite + Tailwind 3.4 + shadcn-style kit; mobile-first (≤390px, zero horizontal scroll), dark default, fast mobile load; cookie auth client with refresh-on-401; `types/api.ts` mirroring all Phase 1–2 shapes; TanStack Query.
+3. **Behavior-first Dashboard** (§20.3): Action Status hero (DO_NOTHING default-success / REVIEW_REQUIRED / REBALANCE_NOW) → Net Worth → Cash Buffer → Execution Plan (if any) → Drift (informational, last).
+4. **Execution Center** (§20.4) — the only decision surface: window status, execution plan (exact shares + amounts), required GXBank→Moomoo transfer amount, next rebalance date, IPS compliance; generate/approve/execute/skip (backend ops only).
+5. **Portfolio** (read-only, §20.5): holdings, allocation, drift — no recommendations.
+6. **Cash Buffer** (§20.6): GXBank balance, deployable surplus, target buffer, readiness; record cash movements (operational entry).
+7. Supporting: **Transactions** (utilitarian record/list), **Net Worth** (manage assets/liabilities), **Settings** (profile, password, strategy/buffer/IPS enforcement), Login, NotFound.
+
+**Verification gate (§20.9):** `tsc --noEmit` + `vite build` green; auth pytest green (cookie login / refresh-rotation / logout / rate-limit / reset); behavioral-compliance review (no forbidden surfaces, no client-side decisions, Action-Status primacy, no horizontal scroll at 390px); app opens → Action Status seen first.
 
 ## Phase 4 — Market Data, Analytics & Rebalancing UI
 FX service (manual + frankfurter/er-api refresh, history), price service (manual + stooq refresh); daily value series; metrics (CAGR, XIRR, TWRR, MWRR, Sharpe, volatility, max drawdown, best/worst month, rolling 12m); FX return decomposition (Investment + FX = Total); rebalance & execution-plan UI; dashboard charts.
@@ -56,3 +67,5 @@ Full test suite (≥90% coverage on services/utils), adversarial code review (ma
 - 2026-06-11: Phase 1 COMPLETE — 69 tests pass, 93% coverage, live HTTP smoke test 20/20, alembic up/down verified. Adversarial review (precision/security/spec) ran; all 6 findings fixed and independently re-verified (rebalance leftover-cash invariant fuzz-checked 0/20,000 negatives; partial-sell avg_cost invariant; failed-login audit; bcrypt timing-oracle defense; input length caps; async DB URL).
 - 2026-06-11: ARCHITECTURE UPDATE (owner directive) — added the WealthOS Execution & Life-Cycle Domain (DESIGN §19): Cash Buffer System, Wealth Operating Cycle Engine, Action Status Engine, Net Worth expansion (portfolio ⊂ net worth), IPS Enforcement Engine, Execution Window Engine + Deployment Queue. Phase 2 RE-SCOPED to this domain/execution work only (UI/auth-hardening/analytics/AI shifted to Phases 3–8).
 - 2026-06-11: ARCHITECTURE REFINEMENTS (owner) incorporated into §19 + Decision Log 19/20/23/24: (1) single Unified Execution Window Engine (`classify_window`, no dual scheduling); (2) three-tier IPS enforcement INFO/WARN/BLOCK with BLOCK reserved for forbidden asset classes; (3) cash model separation (operational `cash_accounts` vs reporting `net_worth_cash_snapshots`); (4) canonical pipeline LOCKED (§19.9). Phase 2 implementation APPROVED — building now.
+- 2026-06-17: Phase 2 COMPLETE & approved (168 tests, ~88% cov, live smoke + adversarial review; action-status in-window signal fixed). graphify run, HANDOFF written, pushed to origin/main (2d8f78a).
+- 2026-06-17: Phase 3 APPROVED & SCOPED as the Behavioral Interface Layer (DESIGN §20 added + DL 25/26). Building now: auth hardening + behavior-first frontend. UI mirrors the engine; AI/news/signals/recommendations forbidden.

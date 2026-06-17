@@ -13,6 +13,7 @@ from app.api.v1.router import api_router
 from app.core.config import get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import get_logger, setup_logging
+from app.core.rate_limit import RateLimitMiddleware
 from app.db.init_db import init_db
 
 logger = get_logger("main")
@@ -27,7 +28,10 @@ _DESCRIPTION = (
 _OPENAPI_TAGS = [
     {
         "name": "auth",
-        "description": "Login (JWT bearer) and current-user profile.",
+        "description": (
+            "Cookie sessions (HttpOnly access + rotating refresh) with bearer "
+            "fallback: login, refresh, logout, password reset and profile."
+        ),
     },
     {
         "name": "transactions",
@@ -73,6 +77,10 @@ def create_app() -> FastAPI:
         openapi_tags=_OPENAPI_TAGS,
         lifespan=_lifespan,
     )
+    # Rate limiting is added first so CORS (added second) wraps it — a 429
+    # rejection still carries the CORS headers the browser requires. Starlette
+    # runs the most-recently-added middleware outermost.
+    app.add_middleware(RateLimitMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.FRONTEND_ORIGIN],

@@ -17,6 +17,33 @@ class LoginIn(BaseModel):
         min_length=1, max_length=320, description="Email address or username"
     )
     password: str = Field(min_length=1, max_length=256)
+    remember: bool = Field(
+        default=False,
+        description="Extend the refresh-session lifetime (30d vs 1d).",
+    )
+
+
+class PasswordResetRequestIn(BaseModel):
+    """Password-reset request: an email address (never enumerated)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email: str = Field(min_length=1, max_length=320)
+
+
+class PasswordResetConfirmIn(BaseModel):
+    """Password-reset confirmation: the raw token plus the new password."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    token: str = Field(min_length=1, max_length=512)
+    new_password: str = Field(min_length=8, max_length=256)
+
+
+class OkOut(BaseModel):
+    """Trivial acknowledgement payload (``{"ok": true}``)."""
+
+    ok: bool = True
 
 
 class TokenOut(BaseModel):

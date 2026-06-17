@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -15,6 +17,11 @@ _BCRYPT_ROUNDS = 12
 _BCRYPT_MAX_PASSWORD_BYTES = 72
 _JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_TYPE = "access"
+
+# Opaque refresh / reset secrets are 48 random bytes (DESIGN §9), URL-safe
+# base64-encoded for cookie transport, and stored only as a SHA-256 hex digest.
+_REFRESH_TOKEN_BYTES = 48
+_RESET_TOKEN_BYTES = 48
 
 
 def _password_bytes(password: str) -> bytes:
@@ -94,3 +101,34 @@ def decode_access_token(token: str) -> dict[str, Any]:
     if payload.get("type") != ACCESS_TOKEN_TYPE:
         raise AuthError("Invalid token type")
     return payload
+
+
+def hash_token(raw: str) -> str:
+    """Return the SHA-256 hex digest of an opaque token (DESIGN §9).
+
+    Refresh and password-reset secrets are stored only as this digest; a
+    lookup hashes the presented raw token and compares against the column.
+    SHA-256 (not bcrypt) is appropriate here because the secret is itself a
+    high-entropy 48-byte random value, so there is nothing to brute-force.
+    """
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def generate_refresh_token() -> tuple[str, str]:
+    """Mint a new refresh token; return ``(raw, sha256_hash)`` (DESIGN §9).
+
+    ``raw`` is the URL-safe secret placed in the ``wos_refresh`` cookie;
+    ``sha256_hash`` is what is persisted in ``auth_sessions``.
+    """
+    raw = secrets.token_urlsafe(_REFRESH_TOKEN_BYTES)
+    return raw, hash_token(raw)
+
+
+def generate_reset_token() -> tuple[str, str]:
+    """Mint a new password-reset token; return ``(raw, sha256_hash)``.
+
+    ``raw`` is logged server-side and (later) emailed; ``sha256_hash`` is
+    persisted in ``password_reset_tokens``.
+    """
+    raw = secrets.token_urlsafe(_RESET_TOKEN_BYTES)
+    return raw, hash_token(raw)

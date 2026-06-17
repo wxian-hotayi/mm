@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_MINUTES: int = 30
     REFRESH_DAYS_REMEMBER: int = 30
     REFRESH_DAYS_DEFAULT: int = 1
+    RATE_LIMIT_ENABLED: bool = True
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4o-mini"
     LOG_LEVEL: str = "INFO"

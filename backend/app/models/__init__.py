@@ -2,6 +2,7 @@
 
 from app.db.base import Base
 from app.models.audit import AuditEventType, AuditLog, AuditSeverity
+from app.models.auth_session import AuthSession, PasswordResetToken
 from app.models.cash import (
     CashAccount,
     CashAccountType,
@@ -38,6 +39,8 @@ __all__ = [
     "AuditEventType",
     "AuditLog",
     "AuditSeverity",
+    "AuthSession",
+    "PasswordResetToken",
     "CashAccount",
     "CashAccountType",
     "CashMovement",
