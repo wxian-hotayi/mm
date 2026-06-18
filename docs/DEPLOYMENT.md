@@ -69,6 +69,27 @@ _Phase 5 — Deployment Readiness. **Preparation only — do not deploy publicly
 
 **Why:** matches the owner's Vercel preference; the rewrite gives same-origin cookies with zero code change; one Render instance satisfies the single-process constraint; a persistent disk keeps SQLite durable; `/api/v1/health` drives platform health checks. Start on **SQLite** (single-user, low write volume, ledger-first); migrate to Postgres only if/when multi-user or scaling is needed.
 
+### 1.5 FREE-TIER / DEMO mode (current active config) — **testing & UI validation only**
+
+The committed `render.yaml` is set to **free/ephemeral** mode for demo and UI validation. **No application or financial-logic code changes are required** for this — the backend already self-heals on a missing DB.
+
+**What free tier means here:**
+- **No persistent disk.** Render free has an ephemeral filesystem and **spins down after ~15 min idle**; the filesystem resets on spin-down/redeploy. SQLite lives at `/tmp/wealthos.db` and is treated as throwaway.
+- **Auto-initialization (verified):** on every cold boot, `init_db()` runs `Base.metadata.create_all` (builds the latest schema directly from the models — Alembic not needed for a fresh ephemeral DB) **and idempotently re-seeds** the admin + default IPS + default cash account from env. Confirmed locally against a fresh, non-existent nested path: dir auto-created, schema built, rows seeded. `session.py` already `mkdir -p`s the SQLite parent dir.
+- **Stateless-safe APIs:** all endpoints return valid empty-state data on a fresh DB (e.g. valuation `nav_usd = 0`, net worth `0`) — confirmed in the Phase 4 live E2E (49/49 on a fresh DB). No endpoint assumes pre-existing data.
+- **What persists vs. what doesn't:** Render **env vars persist** across restarts, so `SECRET_KEY` stays stable (JWTs/logins survive restarts) and the admin is always available. **Database rows do NOT persist** — anything entered in a session is gone after a spin-down/redeploy. ~30–60 s cold-start on the first request after idle.
+
+**Free-tier config deltas vs. the durable (paid) recommendation:**
+| Setting | Free/demo (active) | Durable (paid) |
+|---|---|---|
+| `plan` | `free` | `starter` |
+| `disk:` | omitted | 1 GB at `/data` |
+| `DATABASE_URL` | `sqlite+aiosqlite:////tmp/wealthos.db` | `sqlite+aiosqlite:////data/wealthos.db` |
+| schema | `create_all` on boot | `preDeployCommand: alembic upgrade head` |
+| data durability | **ephemeral** | persistent |
+
+**Use it for:** verifying the deployed UI/UX, auth flow, routing, mobile layout, and that all APIs respond in a real hosted environment. **Do not** enter data you need to keep. **Upgrade to durable** later by flipping the table above (the `render.yaml` comments mark exactly what to change). `ENV=production` is kept even on free tier so Secure cookies stay on (both Vercel and Render free are HTTPS); `SECRET_KEY` + `ADMIN_*` must still be set in the dashboard.
+
 ---
 
 ## 2. Environment Matrix (dev / staging / production)

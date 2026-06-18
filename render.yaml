@@ -1,33 +1,44 @@
-# Render Blueprint for the WealthOS backend (docs/DEPLOYMENT.md §1.4).
-# Deploy via Render → "New +" → "Blueprint" → point at this repo.
-# Secrets (sync:false) are entered in the Render dashboard, NOT committed here.
+# Render Blueprint for the WealthOS backend -- FREE-TIER / DEMO MODE.
+# Deploy via Render -> "New +" -> "Blueprint" -> point at this repo.
 #
-# Single instance / single worker is intentional: the rate limiter is in-memory
-# and SQLite is single-writer. A persistent disk keeps the SQLite file durable
-# across deploys (a paid plan is required for disks).
+# WARNING - EPHEMERAL: the free plan has NO persistent disk and spins down after
+# ~15 min idle; its filesystem resets on spin-down/redeploy. SQLite therefore
+# lives in /tmp and is treated as throwaway. On every cold boot the app recreates
+# the schema (Base.metadata.create_all) and re-seeds the admin + default IPS +
+# default cash account from env (init_db is idempotent), so login/UI/all APIs
+# work -- but DATA ENTERED IN A SESSION IS NOT DURABLE. Testing / UI demo only.
+#
+# Env vars (SECRET_KEY/ADMIN_*) persist on Render across restarts, so logins
+# remain valid; only DB rows are ephemeral. Secrets (sync:false) are entered in
+# the dashboard, never committed.
+#
+# To upgrade to DURABLE (paid) later: set `plan: starter`, uncomment the `disk:`
+# block, set DATABASE_URL to `sqlite+aiosqlite:////data/wealthos.db`, and add
+# `preDeployCommand: "alembic upgrade head"`. (See docs/DEPLOYMENT.md S1.5.)
 services:
   - type: web
     name: wealthos-api
     runtime: python
     region: singapore            # closest Render region to Malaysia
-    plan: starter                # paid: required for a persistent disk
+    plan: free                   # FREE / ephemeral (no persistent disk)
     rootDir: backend
     buildCommand: "pip install -r requirements.txt"
-    preDeployCommand: "alembic upgrade head"   # versioned schema before boot
+    # No preDeployCommand on free tier -- schema is created on boot by init_db's
+    # create_all (fresh ephemeral DB => latest schema directly; Alembic not needed).
     startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips=*"
     healthCheckPath: /api/v1/health
-    disk:
-      name: wealthos-data
-      mountPath: /data
-      sizeGB: 1
     autoDeploy: true
+    # disk:                      # paid only; uncomment to make SQLite durable
+    #   name: wealthos-data
+    #   mountPath: /data
+    #   sizeGB: 1
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"
       - key: ENV
-        value: production
+        value: production        # HTTPS both ends => keep Secure cookies on
       - key: DATABASE_URL
-        value: sqlite+aiosqlite:////data/wealthos.db   # absolute path on the mounted disk
+        value: sqlite+aiosqlite:////tmp/wealthos.db   # EPHEMERAL scratch (free tier)
       - key: ACCESS_TOKEN_MINUTES
         value: "30"
       - key: REFRESH_DAYS_REMEMBER
@@ -38,8 +49,8 @@ services:
         value: "true"
       - key: LOG_LEVEL
         value: "INFO"
-      # ── Enter these in the dashboard (never commit real values) ──
-      - key: SECRET_KEY            # 64+ random chars
+      # Enter these in the dashboard (never commit real values):
+      - key: SECRET_KEY            # 64+ random chars; persists across restarts
         sync: false
       - key: FRONTEND_ORIGIN       # e.g. https://wealthos.vercel.app
         sync: false
@@ -47,5 +58,5 @@ services:
         sync: false
       - key: ADMIN_USERNAME
         sync: false
-      - key: ADMIN_PASSWORD        # change after first login
+      - key: ADMIN_PASSWORD        # re-seeded on every cold boot
         sync: false

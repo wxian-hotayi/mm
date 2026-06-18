@@ -7,7 +7,8 @@ _Last updated: 2026-06-18 · Wealth Execution Operating System for a Malaysian l
 - **Phase 2 — Wealth Execution Domain: COMPLETE & verified.**
 - **Phase 3 — Behavioral Interface Layer: COMPLETE & VERIFIED (gate 2026-06-18 — PASS).**
 - **Phase 4 QA Gate (Release Readiness Gate): COMPLETE 2026-06-18 — PASS.** Live E2E 49/49, integration/financial/auth/mobile all verified; one responsiveness fix applied. _This is a gate, not a roadmap phase — roadmap NOT renumbered._
-- **Phase 5 — Deployment Readiness (preparation only; NOT deployed): COMPLETE 2026-06-18.** Blueprint `docs/DEPLOYMENT.md` + env templates written. **READY FOR PUBLIC DEPLOYMENT = NO by design** (prep only); go-live gated on runbook preconditions. Do NOT deploy yet.
+- **Phase 5 — Deployment Readiness (preparation only; NOT deployed): COMPLETE 2026-06-18.** Blueprint `docs/DEPLOYMENT.md` + env templates written. **READY FOR PUBLIC DEPLOYMENT = NO by design** (prep only); go-live gated on runbook preconditions.
+- **Phase 6 — Go-live configs: present; FREE-TIER / DEMO mode active (2026-06-18).** `render.yaml` set to free/ephemeral (no disk; SQLite at `/tmp`, recreated + reseeded on every boot), `frontend/vercel.json`, `backend/Dockerfile`, `backend/smoke_prod.py`. **No app/financial code changed** — backend already self-initializes on a missing DB (verified). Free tier = **testing/UI-demo only; DB rows are NOT durable** (reset on spin-down/redeploy); durability is a later paid switch (see DEPLOYMENT.md §1.5). Not yet deployed (needs owner's Render/Vercel accounts).
 - Real pages: Login, Dashboard, Execution Center, Portfolio, Cash Buffer, Settings. Transactions + Net Worth are intentional placeholders; `*` → NotFound placeholder.
 - Tests: **181 passing, 89% coverage** + **49/49 live in-process E2E** (`backend/qa_e2e_phase4.py`). Frontend `tsc --noEmit` clean; `vite build` green.
 
@@ -98,7 +99,7 @@ FORBIDDEN: AI advisor/LLM, stock recommendations, market news, trading signals, 
 - Frontend: React + TS strict + Vite + Tailwind, mobile-first (≤390px, dark default); TanStack Query for server state + Zustand for UI/transient state; cookie client with refresh-on-401; `types/api.ts` mirrors backend shapes.
 
 ## Next Actions
-1. **Go-live (when approved):** execute the `docs/DEPLOYMENT.md` runbook §8 — provision backend + persistent volume, `alembic upgrade head`, `ENV=production` + strong `SECRET_KEY` + `ADMIN_*` via secret store, uvicorn `--proxy-headers` single worker, Vercel frontend with `/api` rewrite, backups + uptime monitor, then the post-deploy checklist. **Owner has said DO NOT deploy yet.**
+1. **Free-tier go-live (current mode):** Render → Blueprint (`render.yaml`, plan **free**, no disk) → set `SECRET_KEY` + `ADMIN_*` + `FRONTEND_ORIGIN` in the dashboard → deploy → set the Render host in `frontend/vercel.json` → deploy frontend on Vercel (free) → validate with `backend/smoke_prod.py`. Ephemeral demo only (DB resets on spin-down). Upgrade to durable later via the paid deltas in DEPLOYMENT.md §1.5. Needs owner's cloud accounts to execute.
 2. **Optional pre-launch (not blockers for single-user):** SMTP email for password reset (design in DEPLOYMENT.md §5); shorter access-token TTL; `asyncpg` if moving to Postgres; Sentry; `TrustedHostMiddleware` (Phase 8).
 3. **Roadmap Phase 4 (feature work, separate from the QA/readiness gates):** Market Data, Analytics & Rebalancing UI — FX + price services, metrics, FX return decomposition, charts; auto-populates `investment_myr`. Also build deferred **Transactions** + **Net Worth** pages.
 4. **Regenerate graphify** (`graphify update .`, when confirmed) so the graph reflects the Phase 3 frontend + QA/readiness changes.
