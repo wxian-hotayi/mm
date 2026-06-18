@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+data/
+*.db
+*.db-journal
+tests/
+smoke_test.py
+smoke_phase2.py
+qa_e2e_phase4.py
+smoke_prod.py

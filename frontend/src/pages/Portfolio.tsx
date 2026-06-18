@@ -261,8 +261,8 @@ function HoldingCard({ h }: { h: HoldingOut }) {
 
 function HoldingsTable({ holdings }: { holdings: readonly HoldingOut[] }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-border">
-      <table className="w-full border-collapse text-sm">
+    <div className="overflow-x-auto rounded-xl border border-border">
+      <table className="w-full min-w-[640px] border-collapse text-sm">
         <thead>
           <tr className="border-b border-border bg-surface2/50 text-left text-xs uppercase tracking-wide text-muted">
             <th className="px-4 py-3 font-medium">Symbol</th>

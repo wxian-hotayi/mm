@@ -1,0 +1,51 @@
+# Render Blueprint for the WealthOS backend (docs/DEPLOYMENT.md §1.4).
+# Deploy via Render → "New +" → "Blueprint" → point at this repo.
+# Secrets (sync:false) are entered in the Render dashboard, NOT committed here.
+#
+# Single instance / single worker is intentional: the rate limiter is in-memory
+# and SQLite is single-writer. A persistent disk keeps the SQLite file durable
+# across deploys (a paid plan is required for disks).
+services:
+  - type: web
+    name: wealthos-api
+    runtime: python
+    region: singapore            # closest Render region to Malaysia
+    plan: starter                # paid: required for a persistent disk
+    rootDir: backend
+    buildCommand: "pip install -r requirements.txt"
+    preDeployCommand: "alembic upgrade head"   # versioned schema before boot
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips=*"
+    healthCheckPath: /api/v1/health
+    disk:
+      name: wealthos-data
+      mountPath: /data
+      sizeGB: 1
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12"
+      - key: ENV
+        value: production
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:////data/wealthos.db   # absolute path on the mounted disk
+      - key: ACCESS_TOKEN_MINUTES
+        value: "30"
+      - key: REFRESH_DAYS_REMEMBER
+        value: "30"
+      - key: REFRESH_DAYS_DEFAULT
+        value: "1"
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
+      - key: LOG_LEVEL
+        value: "INFO"
+      # ── Enter these in the dashboard (never commit real values) ──
+      - key: SECRET_KEY            # 64+ random chars
+        sync: false
+      - key: FRONTEND_ORIGIN       # e.g. https://wealthos.vercel.app
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD        # change after first login
+        sync: false
